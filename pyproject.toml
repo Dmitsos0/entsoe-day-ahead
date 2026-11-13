@@ -1,0 +1,6 @@
+[project]
+name = "entsoe"
+version = "0.1.0"
+
+[tool.setuptools]
+packages = ["Models", "Models.light", "PythonFiles", "PythonFiles.Tools","PythonFiles.EnexGas","PythonFiles.entsoe"]
