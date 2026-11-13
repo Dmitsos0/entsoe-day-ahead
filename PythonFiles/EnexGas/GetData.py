@@ -80,7 +80,7 @@ def get_data():
         if response.status_code != 200:
             print(f"bad connection with status code: {response.status_code}, potentially a url change or rate limit triggered please report this to me")
             sys.exit()
-        target = Path(PATH) / f"{year}_NGAS_DOL"
+        target = PATH / f"{year}_NGAS_DOL"
         target.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(io.BytesIO(response.content)) as z:
@@ -92,7 +92,7 @@ def get_data():
                     (target / filename).write_bytes(z.read(member))
 
     if(len(prev_years) > 0):
-        SAVE_DIR = Path(PATH + str(original_start.year) + "_NGAS_DOL")
+        SAVE_DIR = PATH / (str(original_start.year) + "_NGAS_DOL")
         files = SAVE_DIR.iterdir()
         for f in files:
             file_date = pd.to_datetime(f.name.split("_")[0],format="%Y%m%d").date()
@@ -100,7 +100,7 @@ def get_data():
                 f.unlink(missing_ok=True)
 
 
-    SAVE_DIR =Path(PATH + str(cur_year) + "_NGAS_DOL")
+    SAVE_DIR =PATH / (str(cur_year) + "_NGAS_DOL")
     for d in pd.date_range(starts_at.date(), ends_at.date(), freq="D"):
         name = f"{d:%Y%m%d}"
         url = f"{HENEX}{DOCUMENTS}{name}_NGAS_DOL_EN_v01.xlsx"
@@ -120,7 +120,7 @@ def get_data():
 
 def analyze_data():
     frames = []
-    for folder in Path(PATH).iterdir():
+    for folder in PATH.iterdir():
         if folder.is_dir():
             for file in folder.iterdir():
                 if file.suffix != ".xlsx":
