@@ -13,18 +13,18 @@ def test_naive():
     test_start = pd.Timestamp(os.getenv("START_DATE_TESTING"),tz="UTC")
     test_end = pd.Timestamp(os.getenv("END_DATE_TESTING"),tz="UTC")
     prices = pd.read_parquet(PRICES_DIR)
-    prices["price_lag_24h"] = prices["actual_price"].shift(24)
+    prices["price_lag_168h"] = prices["actual_price"].shift(168)
     prices = prices.dropna()
     prices = prices.set_index("timestamp")
     prices = prices[(prices.index >= test_start) & (prices.index < test_end + pd.Timedelta(days=1))]
     print(prices.head(),prices.tail())
-    errors = (prices["actual_price"] - prices["price_lag_24h"]).abs()
+    errors = (prices["actual_price"] - prices["price_lag_168h"]).abs()
     wape = errors.sum()/prices["actual_price"].sum() * 100 
     mae = errors.mean()
     print("WAPE: ",wape,"%")
     print("MAE:",mae)
 
-    prices = prices.rename(columns={"price_lag_24h":"prediction"})
+    prices = prices.rename(columns={"price_lag_168h":"prediction"})
 
     output = OUTPUTS_DIR / "naive.parquet"
     prices.to_parquet(output)

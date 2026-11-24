@@ -11,6 +11,7 @@ cd <repo folder> #the folder where you cloned the repo
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Configuration
