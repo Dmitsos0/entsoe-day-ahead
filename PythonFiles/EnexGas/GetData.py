@@ -1,6 +1,6 @@
 import requests as r
 from bs4 import BeautifulSoup 
-from PythonFiles.Tools.Dates import get_dates
+from PythonFiles.Tools.Dates import get_dates,get_missing,get_missing_years
 from PythonFiles.Tools.files import get_data_path
 from datetime import datetime
 import zipfile
@@ -10,38 +10,48 @@ import pandas as pd
 import time
 import random
 import sys
-
+import json
 PATH = Path(__file__).parent / "Resources"
-
+UUIDS_DIR = Path(__file__).parent 
+UUIDS_PATH = UUIDS_DIR / "uuids.json"
 HENEX = "https://www.enexgroup.gr/"
 GAS_LIST = "el/web/guest/gas-official-list?"
 DOCUMENTS =  "documents/20126/997118/"
 arg = "p_p_id_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_v2cho0fcNMrv_"
 
 def get_data():
+    print("getting gas prices...")
     starts_at, ends_at = get_dates()
 
     starts_at = starts_at - pd.Timedelta(days=1) #we only really care for day ahead since activity on the others is minimal
     ends_at = ends_at - pd.Timedelta(days=1)
+    missing_timestamps = get_missing(PATH,starts_at,ends_at,column="Trading Date")
     now = datetime.now()
     cur_year = now.year
-    uuids = dict()
     seen = set()
-    prev_years = []
 
+    missing_years: set[pd.Timestamp] = set()
     if(cur_year > starts_at.year):
-        for year in range(starts_at.year,cur_year):
-            if(year > ends_at.year): break
-            prev_years.append(year)
-        original_start = starts_at
-        starts_at = pd.Timestamp(year=cur_year,month=1,day=1, tz="UTC")
+        missing_years = get_missing_years(missing_timestamps)
 
-    print(prev_years)
+    if(cur_year in missing_years): missing_years.remove(cur_year)
+    missing_uuids= dict()
+    if(UUIDS_PATH.exists()):
+        with UUIDS_PATH.open(mode="r") as f:
+            missing_uuids = json.load(f)
+    missing = False
 
-    if(len(prev_years) > 0):
+    for year in missing_years:
+        if(str(year) not in missing_uuids.keys()):
+            print(str(year), f" missing_uuids keys: {missing_uuids.keys()}")
+            missing = True
+            break
+    
+    if(missing):
         index = 1
         run = True
         while(run): 
+            print(index)
             url = HENEX + GAS_LIST + f"p_p_id=com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_v2cho0fcNMrv&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_v2cho0fcNMrv_redirect=%2Fel%2Fgas-official-list&_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_v2cho0fcNMrv_delta=10&p_r_p_resetCur=false&_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_v2cho0fcNMrv_cur={index}"
             response = r.get(url,timeout=30)
             if response.status_code != 200:
@@ -68,13 +78,18 @@ def get_data():
                 arg1 = text.split("_")[0]
                 year = int(arg1[:4])
                 if(year < cur_year): 
-                    uuids[year] = href.get("href")
+                    missing_uuids[year] = href.get("href")
+                    
             index+=1
             time.sleep(random.uniform(5.0,3.0))
     #now we have all uuids for previous years
+    UUIDS_DIR.mkdir(parents=True,exist_ok=True)
+    with UUIDS_PATH.open(mode="w") as f:
+        json.dump(missing_uuids,f)
 
-    for year in prev_years:
-        uuid = uuids[year]
+    for year in missing_years:
+        print(year)
+        uuid = missing_uuids[str(year)]
         url = HENEX + uuid
         response = r.get(url,timeout=30)
         if response.status_code != 200:
@@ -91,28 +106,22 @@ def get_data():
                 if filename:
                     (target / filename).write_bytes(z.read(member))
 
-    if(len(prev_years) > 0):
-        SAVE_DIR = PATH / (str(original_start.year) + "_NGAS_DOL")
-        files = SAVE_DIR.iterdir()
-        for f in files:
-            file_date = pd.to_datetime(f.name.split("_")[0],format="%Y%m%d").date()
-            if(original_start.date() > file_date or ends_at.date() < file_date):
-                f.unlink(missing_ok=True)
-
 
     SAVE_DIR =PATH / (str(cur_year) + "_NGAS_DOL")
-    for d in pd.date_range(starts_at.date(), ends_at.date(), freq="D"):
-        name = f"{d:%Y%m%d}"
-        url = f"{HENEX}{DOCUMENTS}{name}_NGAS_DOL_EN_v01.xlsx"
-        response = r.get(url, timeout=30)
-        if response.status_code == 404:
-            continue
-        elif response.status_code != 200:
-            print(f"bad connection with status code: {response.status_code}, potentially a url change or rate limit triggered please report this to me")
-            sys.exit()
-        SAVE_DIR.mkdir(parents=True, exist_ok=True)
-        (SAVE_DIR / f"{name}_NGAS_DOL_EN_v01.xlsx").write_bytes(response.content)
-        time.sleep(random.uniform(1.0, 2.0))
+    for tup in missing_timestamps:
+        if(tup[0] != cur_year): continue 
+        for d in pd.date_range(tup[0].date(), tup[1].date(), freq="D"):
+            name = f"{d:%Y%m%d}"
+            url = f"{HENEX}{DOCUMENTS}{name}_NGAS_DOL_EN_v01.xlsx"
+            response = r.get(url, timeout=30)
+            if response.status_code == 404:
+                continue
+            elif response.status_code != 200:
+                print(f"bad connection with status code: {response.status_code}, potentially a url change or rate limit triggered please report this to me")
+                sys.exit()
+            SAVE_DIR.mkdir(parents=True, exist_ok=True)
+            (SAVE_DIR / f"{name}_NGAS_DOL_EN_v01.xlsx").write_bytes(response.content)
+            time.sleep(random.uniform(1.0, 2.0))
         
 
 
@@ -149,3 +158,6 @@ def get_all_enex_gas():
     get_data()
     time.sleep(3) #make sure the files are all ok before trying to load them
     analyze_data()
+
+if __name__ == "__main__": # for testing purposes 
+    get_data()

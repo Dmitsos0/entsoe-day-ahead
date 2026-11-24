@@ -31,5 +31,12 @@ def get_project_dir()-> Path:
     PROJECT_DIR = PYTHONFILES_DIR.parent
     return PROJECT_DIR
 
+def get_models_dir() -> Path:
+    TOOLS_DIR = Path(__file__).resolve().parent
+    PYTHONFILES_DIR = TOOLS_DIR.parent
+    PROJECT_DIR = PYTHONFILES_DIR.parent
+    MODELS_DIR = PROJECT_DIR / "Models"
+    return MODELS_DIR
+
 
 

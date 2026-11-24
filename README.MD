@@ -37,7 +37,7 @@ Edit `main.py` (same directory as this README) so it contains one of these calls
 1. `gather()` downloads data for the configured dates.
 2. `train()` trains a model on the downloaded data
 3. `gather_and_train()` downloads data and trains a model for the configured dates.
-4. `predict()` prints the Weighted Absolute Percentage Error (WAPE) and saves a plot of predicted against actual prices as "chart.png" in the same directory as main.py.
+4. `predict()` prints the Weighted Absolute Percentage Error (WAPE), Mean Average Error (MAE) and saves a plot of predicted against actual prices as "chart.png" in the same directory as main.py.
 5. `train_and_predict()` trains and predicts a model on the downloaded data
 6. `do_all()` downloads data for the configured dates and then trains the model and uses it to predict
 

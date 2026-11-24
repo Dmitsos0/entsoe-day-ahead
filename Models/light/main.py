@@ -6,6 +6,7 @@ from pathlib import Path
 import time
 import os
 import matplotlib.pyplot as plt
+import numpy as np
 DATA_DIR = get_data_path() 
 PROJECT_DIR = get_project_dir()
 
@@ -40,6 +41,8 @@ def train_model():
     merged["price_lag_24h"] = merged["actual_price"].shift(24)
     merged["price_lag_168h"] = merged["actual_price"].shift(168)
 
+    merged["percent_renewables"] = ((merged["solar_forecast"] + merged["wind_forecast"])/merged["load_forecast"])
+    merged["VWAP_multiplied"] = merged["VWAP"] * (np.exp(-0.75 * merged["percent_renewables"]))
     local = merged.index.tz_convert("Europe/Athens")
 
     merged["hour"] = local.hour
@@ -47,7 +50,7 @@ def train_model():
     merged["month"] = local.month
     merged = merged.dropna(subset=["actual_price", "price_lag_24h", "price_lag_168h"])
     price_col = 'actual_price' 
-    feature_cols = ["production_forecast", "load_forecast", "hour", "day", "month", "price_lag_24h","price_lag_168h","solar_forecast","wind_forecast","VWAP"]
+    feature_cols = ["production_forecast","percent_renewables","VWAP_multiplied","load_forecast", "hour", "day", "month", "price_lag_24h","price_lag_168h","solar_forecast","wind_forecast"]
 
     X = merged[feature_cols]
     y = merged[price_col]
@@ -102,6 +105,10 @@ def test_model():
     merged["price_lag_24h"] = merged["actual_price"].shift(24)
     merged["price_lag_168h"] = merged["actual_price"].shift(168)
 
+    merged["percent_renewables"] = ((merged["solar_forecast"] + merged["wind_forecast"])/merged["load_forecast"])
+    merged["VWAP_multiplied"] = merged["VWAP"] * (np.exp(-0.75 * merged["percent_renewables"]))
+
+
     local = merged.index.tz_convert("Europe/Athens")
 
     merged["hour"] = local.hour
@@ -109,7 +116,7 @@ def test_model():
     merged["month"] = local.month
     merged = merged.dropna(subset=["actual_price", "price_lag_24h", "price_lag_168h"])
     price_col = 'actual_price' 
-    feature_cols = ["production_forecast", "load_forecast", "hour", "day", "month", "price_lag_24h","price_lag_168h","solar_forecast","wind_forecast","VWAP"]
+    feature_cols = ["production_forecast","percent_renewables","VWAP_multiplied","load_forecast", "hour", "day", "month", "price_lag_24h","price_lag_168h","solar_forecast","wind_forecast"]
 
     testDf = merged[feature_cols]
     expectedDf = merged[price_col].to_frame()
@@ -130,9 +137,11 @@ def test_model():
 
     total_error = expectedDf["error"].sum()
     total_price = expectedDf[price_col].abs().sum()
-    error = ((total_error)/total_price) * 100   
-    print(error)
-    draw_graph(expectedDf,error)
+    wape = ((total_error)/total_price) * 100   
+    mae = expectedDf["error"].mean()
+    print("WAPE:",wape,"%")
+    print("MAE:",mae)
+    draw_graph(expectedDf,wape)
 
 
 def draw_graph(df: pd.DataFrame,error : float):
