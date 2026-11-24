@@ -19,7 +19,7 @@ Copy `.env.example` to `.env` (same directory as this README) and fill it in:
 
 ```
 ENTSOE_API_KEY=<your key>
-START_DATE_TRAINING=2023-01-10
+START_DATE_TRAINING=2022-05-10
 END_DATE_TRAINING=2025-12-31
 START_DATE_TESTING=2026-01-01
 END_DATE_TESTING=2026-10-31
@@ -58,6 +58,8 @@ python main.py
 - Error can only be measured for days that have already passed, because it needs the actual prices.
   The model can predict future day-ahead prices, but you can't check those predictions until the actual prices are published.
 - Please do not run a model on a dataset it wasnt trained for since that could create errors or incorrect predictions
+
+-IMPORTANT: The date you see is as the training start in .env.example is the earliest date you can run/train the model on since before that data is missing either from enex or from entsoe
 ## Data sources
 
 HEnEx and the ENTSO-E Transparency Platform. Check each provider's terms of use.
